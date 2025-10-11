@@ -12,3 +12,11 @@ Features:
 
 See the [example.py](example.py) for a usage example.
 
+## Acknowledgments
+
+- [VoxCPM](https://github.com/OpenBMB/VoxCPM)
+- [Nano-vLLM](https://github.com/GeeeekExplorer/nano-vllm)
+
+# License
+
+MIT License
