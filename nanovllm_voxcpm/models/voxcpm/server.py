@@ -64,11 +64,6 @@ class VoxCPMServerImpl:
         
         if wav.size(0) > 1:
             wav = wav.mean(dim=0, keepdim=True)
-        
-        align_size = self.llm.patch_size * self.llm.chunk_size
-        if wav.size(1) % align_size != 0:
-            remained = align_size - wav.size(1) % align_size
-            wav = torch.nn.functional.pad(wav, (remained, 0))
 
         latents = self.llm.encode_latents(wav)
         assert latents.shape[0] % self.llm.patch_size == 0
