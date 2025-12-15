@@ -20,6 +20,13 @@ dependencies = [
     "tqdm",
     "numpy",
     "pydantic",
+    "flash-attn", # 如果安装失败，可以先注释掉，单独自行安装 flash-attn 官方仓库上编译好的 whl 。
+    "fastapi[standard]>=0.124.2",
+    "setuptools>=80.9.0",
+    "pytest>=9.0.2",
+    "pydantic-settings>=2.12.0",
+    "soundfile>=0.13.1",
+    "ffmpeg-python>=0.2.0",
 ]
 
 [project.urls]
