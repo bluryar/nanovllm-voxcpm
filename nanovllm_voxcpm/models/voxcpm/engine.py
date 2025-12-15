@@ -32,7 +32,25 @@ class VoxCPMEngine(LLMEngineBase):
         self.n_decode_pad_frames = 4
         self.feat_dim = config.model_config.feat_dim
         self.patch_size = config.model_config.patch_size
-        self.chunk_size = 640
+        
+        # 动态计算chunk_size，支持不同版本的encoder_rates
+        if config.model_config.audio_vae_config is not None:
+            # 1.5模型：从配置中读取encoder_rates
+            vae_config = config.model_config.audio_vae_config
+            self.chunk_size = np.prod(vae_config.encoder_rates)
+            # 使用logging替代print，避免多进程问题
+            print(f"[VoxCPM] 检测到1.5模型配置:")
+            print(f"  - sample_rate: {vae_config.sample_rate}")
+            print(f"  - patch_size: {config.model_config.patch_size}")
+            print(f"  - encoder_rates: {vae_config.encoder_rates}")
+            print(f"  - 计算得出 chunk_size: {self.chunk_size}")
+        else:
+            # 老版本：使用默认值
+            self.chunk_size = 640  # prod([2, 5, 8, 8])
+            print(f"[VoxCPM] 使用老版本默认配置:")
+            print(f"  - patch_size: {config.model_config.patch_size}")
+            print(f"  - 使用默认 chunk_size: {self.chunk_size}")
+            
         self.audio_start_token = 101
         self.block_size = config.kvcache_block_size
 

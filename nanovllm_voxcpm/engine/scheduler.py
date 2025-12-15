@@ -88,3 +88,9 @@ class Scheduler:
         self.block_manager.deallocate(seq)
         self.running.remove(seq)
         self._id_to_seq.pop(seq.seq_id)
+
+    def stats(self) -> dict:
+        return {
+            "waiting": len(self.waiting),
+            "running": len(self.running),
+        }

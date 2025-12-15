@@ -11,6 +11,8 @@ import asyncio
 from typing import List
 import numpy as np
 import random
+import threading
+import time
 
 def gen_uuid() -> str:
     return uuid.uuid4().hex
@@ -45,6 +47,9 @@ class VoxCPMServerImpl:
 
         self.llm = VoxCPMEngine(engine_config)
         self.sample_rate = self.llm.model_runner.vae.sample_rate
+        print(f"[VoxCPM Server] 实际VAE采样率: {self.sample_rate}")
+        print(f"[VoxCPM Server] 实际patch_size: {self.llm.patch_size}")
+        print(f"[VoxCPM Server] 实际chunk_size: {self.llm.chunk_size}")
 
     def health(self):
         return {
@@ -112,7 +117,9 @@ class VoxCPMServerImpl:
 def main_loop(
     queue_in : mp.Queue,
     queue_out : mp.Queue,
-    args, kwargs
+    args, kwargs,
+    scheduler_log_interval : float = 5.0,
+    scheduler_log_enable : bool = True
 ):
     import signal
     signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -130,6 +137,10 @@ def main_loop(
 
             if method_name == "stop":
                 states["is_stoped"] = True
+                try:
+                    printer_stop.set()
+                except Exception:
+                    pass
                 return {
                     "type": "response",
                     "id": opid,
@@ -150,6 +161,26 @@ def main_loop(
                 "error": traceback_str,
             }
 
+    printer_stop = threading.Event()
+    def printer_loop():
+        interval = scheduler_log_interval
+        enable_log = scheduler_log_enable
+
+        if not enable_log:
+            return
+
+        while not printer_stop.is_set():
+            try:
+                stats = srv.llm.scheduler.stats()
+                timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                print(f"[{timestamp}] [ServerStats] waiting={stats['waiting']} running={stats['running']}")
+            except Exception:
+                pass
+            time.sleep(interval)
+
+    printer_thread = threading.Thread(target=printer_loop, daemon=True)
+    printer_thread.start()
+
     while not states["is_stoped"]:
         # while llm server is empty
         cmd = queue_in.get()
@@ -168,7 +199,6 @@ def main_loop(
             if states["is_stoped"]:
                 break
             
-            # then do llm step
             output = srv.step()
 
             # update output
@@ -186,6 +216,12 @@ def main_loop(
                         "data": None,
                     })
 
+    try:
+        printer_stop.set()
+        printer_thread.join(timeout=2)
+    except Exception:
+        pass
+
 
 class AsyncVoxCPMServer:
     def __init__(self,
@@ -197,6 +233,8 @@ class AsyncVoxCPMServer:
         gpu_memory_utilization: float = 0.9,
         enforce_eager: bool = False,
         devices : List[int] = [],
+        scheduler_log_interval : float = 5.0,
+        scheduler_log_enable : bool = True,
         **kwargs,
     ):
         if len(kwargs) > 0:
@@ -207,7 +245,7 @@ class AsyncVoxCPMServer:
         self.queue_out = ctx.Queue()
         self.process = ctx.Process(
             target=main_loop, 
-            args=(self.queue_in, self.queue_out, (model_path, inference_timesteps, max_num_batched_tokens, max_num_seqs, max_model_len, gpu_memory_utilization, enforce_eager, devices), {}),
+            args=(self.queue_in, self.queue_out, (model_path, inference_timesteps, max_num_batched_tokens, max_num_seqs, max_model_len, gpu_memory_utilization, enforce_eager, devices), {}, scheduler_log_interval, scheduler_log_enable),
             daemon=True,
         )
         self.process.start()
@@ -259,7 +297,7 @@ class AsyncVoxCPMServer:
         return await self.submit("health")
     
     async def wait_for_ready(self):
-        await self.health()
+        return await self.health()
     
     async def encode_latents(self, wav : bytes, wav_format : str):
         return await self.submit("encode_latents", wav, wav_format)
@@ -307,6 +345,8 @@ class AsyncVoxCPMServerPool:
         gpu_memory_utilization: float = 0.9,
         enforce_eager: bool = False,
         devices : List[int] = [],
+        scheduler_log_interval : float = 5.0,
+        scheduler_log_enable : bool = True,
         **kwargs,
     ):
         if len(kwargs) > 0:
@@ -322,12 +362,22 @@ class AsyncVoxCPMServerPool:
                 gpu_memory_utilization=gpu_memory_utilization,
                 enforce_eager=enforce_eager,
                 devices=[device_idx],
+                scheduler_log_interval=scheduler_log_interval,
+                scheduler_log_enable=scheduler_log_enable,
             )
             for device_idx in devices
         ]
         
         self.servers_load = np.zeros(len(self.servers), dtype=np.int32)
-
+        
+        model_config = VoxCPMConfig.model_validate_json(
+            open(os.path.join(model_path, "config.json")).read()
+        )
+        # 如果配置里没有 sample_rate，则默认 16000，避免程序崩溃
+        try:
+            self.sample_rate = model_config.audio_vae_config.sample_rate
+        except AttributeError:
+            self.sample_rate = 16000
         self._prompt_pool = {}
 
     async def wait_for_ready(self):
@@ -341,40 +391,15 @@ class AsyncVoxCPMServerPool:
         min_load_server_idx = np.argmin(self.servers_load)
         return await self.servers[min_load_server_idx].encode_latents(wav, wav_format)
     
-    async def add_prompt(self, wav : bytes, wav_format : str, prompt_text : str):
-        prompt_id = gen_uuid()
-        prompt_latents = await self.encode_latents(wav, wav_format)
-        self._prompt_pool[prompt_id] = {
-            "latents": prompt_latents,
-            "text": prompt_text,
-        }
-        return prompt_id
-    
-    async def remove_prompt(self, prompt_id : str):
-        del self._prompt_pool[prompt_id]
-    
     async def generate(
         self,
         target_text : str,
         prompt_latents : bytes | None = None,
         prompt_text : str = "",
-        prompt_id : str | None = None,
         max_generate_length : int = 2000,
         temperature : float = 1.0,
         cfg_value : float = 2.0
     ):
-        if prompt_id is not None:
-            if prompt_id not in self._prompt_pool:
-                raise ValueError(f"Prompt with id {prompt_id} not found")
-            if prompt_latents is not None:
-                raise ValueError("Prompt latents and prompt id cannot be provided at the same time")
-            if len(prompt_text) > 0:
-                raise ValueError("Prompt text and prompt id cannot be provided at the same time")
-
-            prompt_info = self._prompt_pool[prompt_id]
-            prompt_latents = prompt_info["latents"]
-            prompt_text = prompt_info["text"]
-
         min_load_server_idx = np.argmin(self.servers_load)
         self.servers_load[min_load_server_idx] += 1
 
@@ -423,14 +448,8 @@ class SyncVoxCPMServerPool:
     def encode_latents(self, wav : bytes, wav_format : str):
         return self.loop.run_until_complete(self.server_pool.encode_latents(wav, wav_format))
     
-    def add_prompt(self, wav : bytes, wav_format : str, prompt_text : str):
-        return self.loop.run_until_complete(self.server_pool.add_prompt(wav, wav_format, prompt_text))
-    
-    def remove_prompt(self, prompt_id : str):
-        return self.loop.run_until_complete(self.server_pool.remove_prompt(prompt_id))
-    
-    def generate(self, target_text : str, prompt_latents : bytes | None = None, prompt_text : str = "", prompt_id : str | None = None, max_generate_length : int = 2000, temperature : float = 1.0, cfg_value : float = 2.0):
-        async_gen = self.server_pool.generate(target_text, prompt_latents, prompt_text, prompt_id, max_generate_length, temperature, cfg_value)
+    def generate(self, target_text : str, prompt_latents : bytes | None = None, prompt_text : str = "", max_generate_length : int = 2000, temperature : float = 1.0, cfg_value : float = 2.0):
+        async_gen = self.server_pool.generate(target_text, prompt_latents, prompt_text, max_generate_length, temperature, cfg_value)
         try:
             while True:
                 item = self.loop.run_until_complete(async_gen.__anext__())
