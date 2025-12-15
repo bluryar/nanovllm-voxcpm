@@ -47,9 +47,6 @@ class VoxCPMServerImpl:
 
         self.llm = VoxCPMEngine(engine_config)
         self.sample_rate = self.llm.model_runner.vae.sample_rate
-        print(f"[VoxCPM Server] 实际VAE采样率: {self.sample_rate}")
-        print(f"[VoxCPM Server] 实际patch_size: {self.llm.patch_size}")
-        print(f"[VoxCPM Server] 实际chunk_size: {self.llm.chunk_size}")
 
     def health(self):
         return {
