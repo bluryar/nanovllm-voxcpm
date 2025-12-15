@@ -1,41 +1,145 @@
 # Nano-vLLM-VoxCPM
 
+[English](#english) | [中文](#chinese)
+
+<a name="english"></a>
+## English
+
 An inference engine for VoxCPM based on Nano-vLLM.
 
-Features:
+### Features
 - Faster than the pytorch implementation
 - Support concurrent requests
 - Friendly async API, easy to use in FastAPI (see [fastapi/app.py](fastapi/app.py))
 
-## Installation
+### Supported Models
+
+This project supports inference for both versions of VoxCPM weights:
+- [VoxCPM-0.5B](https://huggingface.co/openbmb/VoxCPM-0.5B)
+- [VoxCPM1.5](https://huggingface.co/openbmb/VoxCPM1.5)
+
+### Installation
 
 Nano-vLLM-VoxCPM is not available on PyPI yet, you need to install it from source.
 
-```
+```bash
 git clone https://github.com/a710128/nanovllm-voxcpm.git
 cd nanovllm-voxcpm
 pip install -e .
 ```
 
-## Basic Usage
+### Quick Start (FastAPI Server)
+
+You can start the API server using the following command. Make sure to specify the correct `MODEL_PATH`.
+
+```bash
+MODEL_PATH="./VoxCPM-0.5B" fastapi run fastapi/app.py
+```
+
+### Configuration (Environment Variables)
+
+The server can be configured using environment variables. You can set them in a `.env` file or pass them directly to the command.
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `MODEL_PATH` | `~/VoxCPM-0.5B` | Path to the VoxCPM model directory (supports both 0.5B and 1.5 versions). |
+| `MAX_NUM_BATCHED_TOKENS` | `8192` | Maximum number of tokens processed in a batch. |
+| `MAX_NUM_SEQS` | `16` | Maximum number of concurrent sequences (requests). |
+| `MAX_MODEL_LEN` | `4096` | Maximum sequence length for the model. |
+| `GPU_MEMORY_UTILIZATION` | `0.95` | Fraction of GPU memory to be used. |
+| `ENFORCE_EAGER` | `False` | Whether to enforce eager execution mode. |
+| `DEVICES` | `[0]` | List of GPU device IDs to use. |
+| `DB_PATH` | `prompts.db` | Path to the SQLite database for storing prompts. |
+| `INFERENCE_TIMESTEPS` | `10` | Number of diffusion inference timesteps. |
+| `SCHEDULER_LOG_INTERVAL` | `5.0` | Interval (in seconds) for scheduler logging. |
+| `SCHEDULER_LOG_ENABLE` | `True` | Enable or disable scheduler logging. |
+
+### Basic Usage
 
 See the [example.py](example.py) for a usage example.
 
-## Acknowledgments
+### Known Issue
 
+If you encounter an error like `ValueError: Missing parameters: ...` followed by `destroy_process_group()`, it is likely because `nanovllm` expects model parameters in `.safetensors` format, but the original VoxCPM model uses `.pt`.
+
+Solution: Download the `.safetensors` file manually and place it in your model folder.
+- [VoxCPM-0.5B-Safetensors](https://huggingface.co/euphoricpenguin22/VoxCPM-0.5B-Safetensors/blob/main/model.safetensors)
+
+### Acknowledgments
 - [VoxCPM](https://github.com/OpenBMB/VoxCPM)
 - [Nano-vLLM](https://github.com/GeeeekExplorer/nano-vllm)
 
-## License
-
+### License
 MIT License
 
-## Known Issue
+---
 
-If you see the erros below:
-```
-ValueError: Missing parameters: ['base_lm.embed_tokens.weight', 'base_lm.layers.0.self_attn.qkv_proj.weight', 'base_lm.layers.0.self_attn.o_proj.weight', 'base_lm.layers.0.mlp.gate_up_proj.weight', 'base_lm.layers.0.mlp.down_proj.weight', 'base_lm.layers.0.input_layernorm.weight', 'base_lm.layers.0.post_attention_layernorm.weight', 'base_lm.layers.1.self_attn.qkv_proj.weight', 'base_lm.layers.1.self_attn.o_proj.weight', 'base_lm.layers.1.mlp.gate_up_proj.weight', 'base_lm.layers.1.mlp.down_proj.weight', 'base_lm.layers.1.input_layernorm.weight', 'base_lm.layers.1.post_attention_layernorm.weight', 'base_lm.layers.2.self_attn.qkv_proj.weight', 'base_lm.layers.2.self_attn.o_proj.weight', 'base_lm.layers.2.mlp.gate_up_proj.weight', 'base_lm.layers.2.mlp.down_proj.weight', 'base_lm.layers.2.input_layernorm.weight', 'base_lm.layers.2.post_attention_layernorm.weight', 'base_lm.layers.3.self_attn.qkv_proj.weight', 'base_lm.layers.3.self_attn.o_proj.weight', 'base_lm.layers.3.mlp.gate_up_proj.weight', 'base_lm.layers.3.mlp.down_proj.weight', 'base_lm.layers.3.input_layernorm.weight', 'base_lm.layers.3.post_attention_layernorm.weight', 'base_lm.layers.4.self_attn.qkv_proj.weight', 'base_lm.layers.4.self_attn.o_proj.weight', 'base_lm.layers.4.mlp.gate_up_proj.weight', 'base_lm.layers.4.mlp.down_proj.weight', 'base_lm.layers.4.input_layernorm.weight', 'base_lm.layers.4.post_attention_layernorm.weight', 'base_lm.layers.5.self_attn.qkv_proj.weight', 'base_lm.layers.5.self_attn.o_proj.weight', 'base_lm.layers.5.mlp.gate_up_proj.weight', 'base_lm.layers.5.mlp.down_proj.weight', 'base_lm.layers.5.input_layernorm.weight', 'base_lm.layers.5.post_attention_layernorm.weight', 'base_lm.layers.6.self_attn.qkv_proj.weight', 'base_lm.layers.6.self_attn.o_proj.weight', 'base_lm.layers.6.mlp.gate_up_proj.weight', 'base_lm.layers.6.mlp.down_proj.weight', 'base_lm.layers.6.input_layernorm.weight', 'base_lm.layers.6.post_attention_layernorm.weight', 'base_lm.layers.7.self_attn.qkv_proj.weight', 'base_lm.layers.7.self_attn.o_proj.weight', 'base_lm.layers.7.mlp.gate_up_proj.weight', 'base_lm.layers.7.mlp.down_proj.weight', 'base_lm.layers.7.input_layernorm.weight', 'base_lm.layers.7.post_attention_layernorm.weight', 'base_lm.layers.8.self_attn.qkv_proj.weight', 'base_lm.layers.8.self_attn.o_proj.weight', 'base_lm.layers.8.mlp.gate_up_proj.weight', 'base_lm.layers.8.mlp.down_proj.weight', 'base_lm.layers.8.input_layernorm.weight', 'base_lm.layers.8.post_attention_layernorm.weight', 'base_lm.layers.9.self_attn.qkv_proj.weight', 'base_lm.layers.9.self_attn.o_proj.weight', 'base_lm.layers.9.mlp.gate_up_proj.weight', 'base_lm.layers.9.mlp.down_proj.weight', 'base_lm.layers.9.input_layernorm.weight', 'base_lm.layers.9.post_attention_layernorm.weight', 'base_lm.layers.10.self_attn.qkv_proj.weight', 'base_lm.layers.10.self_attn.o_proj.weight', 'base_lm.layers.10.mlp.gate_up_proj.weight', 'base_lm.layers.10.mlp.down_proj.weight', 'base_lm.layers.10.input_layernorm.weight', 'base_lm.layers.10.post_attention_layernorm.weight', 'base_lm.layers.11.self_attn.qkv_proj.weight', 'base_lm.layers.11.self_attn.o_proj.weight', 'base_lm.layers.11.mlp.gate_up_proj.weight', 'base_lm.layers.11.mlp.down_proj.weight', 'base_lm.layers.11.input_layernorm.weight', 'base_lm.layers.11.post_attention_layernorm.weight', 'base_lm.layers.12.self_attn.qkv_proj.weight', 'base_lm.layers.12.self_attn.o_proj.weight', 'base_lm.layers.12.mlp.gate_up_proj.weight', 'base_lm.layers.12.mlp.down_proj.weight', 'base_lm.layers.12.input_layernorm.weight', 'base_lm.layers.12.post_attention_layernorm.weight', 'base_lm.layers.13.self_attn.qkv_proj.weight', 'base_lm.layers.13.self_attn.o_proj.weight', 'base_lm.layers.13.mlp.gate_up_proj.weight', 'base_lm.layers.13.mlp.down_proj.weight', 'base_lm.layers.13.input_layernorm.weight', 'base_lm.layers.13.post_attention_layernorm.weight', 'base_lm.layers.14.self_attn.qkv_proj.weight', 'base_lm.layers.14.self_attn.o_proj.weight', 'base_lm.layers.14.mlp.gate_up_proj.weight', 'base_lm.layers.14.mlp.down_proj.weight', 'base_lm.layers.14.input_layernorm.weight', 'base_lm.layers.14.post_attention_layernorm.weight', 'base_lm.layers.15.self_attn.qkv_proj.weight', 'base_lm.layers.15.self_attn.o_proj.weight', 'base_lm.layers.15.mlp.gate_up_proj.weight', 'base_lm.layers.15.mlp.down_proj.weight', 'base_lm.layers.15.input_layernorm.weight', 'base_lm.layers.15.post_attention_layernorm.weight', 'base_lm.layers.16.self_attn.qkv_proj.weight', 'base_lm.layers.16.self_attn.o_proj.weight', 'base_lm.layers.16.mlp.gate_up_proj.weight', 'base_lm.layers.16.mlp.down_proj.weight', 'base_lm.layers.16.input_layernorm.weight', 'base_lm.layers.16.post_attention_layernorm.weight', 'base_lm.layers.17.self_attn.qkv_proj.weight', 'base_lm.layers.17.self_attn.o_proj.weight', 'base_lm.layers.17.mlp.gate_up_proj.weight', 'base_lm.layers.17.mlp.down_proj.weight', 'base_lm.layers.17.input_layernorm.weight', 'base_lm.layers.17.post_attention_layernorm.weight', 'base_lm.layers.18.self_attn.qkv_proj.weight', 'base_lm.layers.18.self_attn.o_proj.weight', 'base_lm.layers.18.mlp.gate_up_proj.weight', 'base_lm.layers.18.mlp.down_proj.weight', 'base_lm.layers.18.input_layernorm.weight', 'base_lm.layers.18.post_attention_layernorm.weight', 'base_lm.layers.19.self_attn.qkv_proj.weight', 'base_lm.layers.19.self_attn.o_proj.weight', 'base_lm.layers.19.mlp.gate_up_proj.weight', 'base_lm.layers.19.mlp.down_proj.weight', 'base_lm.layers.19.input_layernorm.weight', 'base_lm.layers.19.post_attention_layernorm.weight', 'base_lm.layers.20.self_attn.qkv_proj.weight', 'base_lm.layers.20.self_attn.o_proj.weight', 'base_lm.layers.20.mlp.gate_up_proj.weight', 'base_lm.layers.20.mlp.down_proj.weight', 'base_lm.layers.20.input_layernorm.weight', 'base_lm.layers.20.post_attention_layernorm.weight', 'base_lm.layers.21.self_attn.qkv_proj.weight', 'base_lm.layers.21.self_attn.o_proj.weight', 'base_lm.layers.21.mlp.gate_up_proj.weight', 'base_lm.layers.21.mlp.down_proj.weight', 'base_lm.layers.21.input_layernorm.weight', 'base_lm.layers.21.post_attention_layernorm.weight', 'base_lm.layers.22.self_attn.qkv_proj.weight', 'base_lm.layers.22.self_attn.o_proj.weight', 'base_lm.layers.22.mlp.gate_up_proj.weight', 'base_lm.layers.22.mlp.down_proj.weight', 'base_lm.layers.22.input_layernorm.weight', 'base_lm.layers.22.post_attention_layernorm.weight', 'base_lm.layers.23.self_attn.qkv_proj.weight', 'base_lm.layers.23.self_attn.o_proj.weight', 'base_lm.layers.23.mlp.gate_up_proj.weight', 'base_lm.layers.23.mlp.down_proj.weight', 'base_lm.layers.23.input_layernorm.weight', 'base_lm.layers.23.post_attention_layernorm.weight', 'base_lm.norm.weight', 'residual_lm.layers.0.self_attn.qkv_proj.weight', 'residual_lm.layers.0.self_attn.o_proj.weight', 'residual_lm.layers.0.mlp.gate_up_proj.weight', 'residual_lm.layers.0.mlp.down_proj.weight', 'residual_lm.layers.0.input_layernorm.weight', 'residual_lm.layers.0.post_attention_layernorm.weight', 'residual_lm.layers.1.self_attn.qkv_proj.weight', 'residual_lm.layers.1.self_attn.o_proj.weight', 'residual_lm.layers.1.mlp.gate_up_proj.weight', 'residual_lm.layers.1.mlp.down_proj.weight', 'residual_lm.layers.1.input_layernorm.weight', 'residual_lm.layers.1.post_attention_layernorm.weight', 'residual_lm.layers.2.self_attn.qkv_proj.weight', 'residual_lm.layers.2.self_attn.o_proj.weight', 'residual_lm.layers.2.mlp.gate_up_proj.weight', 'residual_lm.layers.2.mlp.down_proj.weight', 'residual_lm.layers.2.input_layernorm.weight', 'residual_lm.layers.2.post_attention_layernorm.weight', 'residual_lm.layers.3.self_attn.qkv_proj.weight', 'residual_lm.layers.3.self_attn.o_proj.weight', 'residual_lm.layers.3.mlp.gate_up_proj.weight', 'residual_lm.layers.3.mlp.down_proj.weight', 'residual_lm.layers.3.input_layernorm.weight', 'residual_lm.layers.3.post_attention_layernorm.weight', 'residual_lm.layers.4.self_attn.qkv_proj.weight', 'residual_lm.layers.4.self_attn.o_proj.weight', 'residual_lm.layers.4.mlp.gate_up_proj.weight', 'residual_lm.layers.4.mlp.down_proj.weight', 'residual_lm.layers.4.input_layernorm.weight', 'residual_lm.layers.4.post_attention_layernorm.weight', 'residual_lm.layers.5.self_attn.qkv_proj.weight', 'residual_lm.layers.5.self_attn.o_proj.weight', 'residual_lm.layers.5.mlp.gate_up_proj.weight', 'residual_lm.layers.5.mlp.down_proj.weight', 'residual_lm.layers.5.input_layernorm.weight', 'residual_lm.layers.5.post_attention_layernorm.weight', 'residual_lm.norm.weight', 'feat_encoder.special_token', 'feat_encoder.in_proj.weight', 'feat_encoder.in_proj.bias', 'feat_encoder.encoder.layers.0.self_attn.qkv_proj.weight', 'feat_encoder.encoder.layers.0.self_attn.o_proj.weight', 'feat_encoder.encoder.layers.0.mlp.gate_up_proj.weight', 'feat_encoder.encoder.layers.0.mlp.down_proj.weight', 'feat_encoder.encoder.layers.0.input_layernorm.weight', 'feat_encoder.encoder.layers.0.post_attention_layernorm.weight', 'feat_encoder.encoder.layers.1.self_attn.qkv_proj.weight', 'feat_encoder.encoder.layers.1.self_attn.o_proj.weight', 'feat_encoder.encoder.layers.1.mlp.gate_up_proj.weight', 'feat_encoder.encoder.layers.1.mlp.down_proj.weight', 'feat_encoder.encoder.layers.1.input_layernorm.weight', 'feat_encoder.encoder.layers.1.post_attention_layernorm.weight', 'feat_encoder.encoder.layers.2.self_attn.qkv_proj.weight', 'feat_encoder.encoder.layers.2.self_attn.o_proj.weight', 'feat_encoder.encoder.layers.2.mlp.gate_up_proj.weight', 'feat_encoder.encoder.layers.2.mlp.down_proj.weight', 'feat_encoder.encoder.layers.2.input_layernorm.weight', 'feat_encoder.encoder.layers.2.post_attention_layernorm.weight', 'feat_encoder.encoder.layers.3.self_attn.qkv_proj.weight', 'feat_encoder.encoder.layers.3.self_attn.o_proj.weight', 'feat_encoder.encoder.layers.3.mlp.gate_up_proj.weight', 'feat_encoder.encoder.layers.3.mlp.down_proj.weight', 'feat_encoder.encoder.layers.3.input_layernorm.weight', 'feat_encoder.encoder.layers.3.post_attention_layernorm.weight', 'feat_encoder.encoder.norm.weight', 'feat_decoder.estimator.in_proj.weight', 'feat_decoder.estimator.in_proj.bias', 'feat_decoder.estimator.cond_proj.weight', 'feat_decoder.estimator.cond_proj.bias', 'feat_decoder.estimator.out_proj.weight', 'feat_decoder.estimator.out_proj.bias', 'feat_decoder.estimator.time_mlp.linear_1.weight', 'feat_decoder.estimator.time_mlp.linear_1.bias', 'feat_decoder.estimator.time_mlp.linear_2.weight', 'feat_decoder.estimator.time_mlp.linear_2.bias', 'feat_decoder.estimator.delta_time_mlp.linear_1.weight', 'feat_decoder.estimator.delta_time_mlp.linear_1.bias', 'feat_decoder.estimator.delta_time_mlp.linear_2.weight', 'feat_decoder.estimator.delta_time_mlp.linear_2.bias', 'feat_decoder.estimator.decoder.layers.0.self_attn.qkv_proj.weight', 'feat_decoder.estimator.decoder.layers.0.self_attn.o_proj.weight', 'feat_decoder.estimator.decoder.layers.0.mlp.gate_up_proj.weight', 'feat_decoder.estimator.decoder.layers.0.mlp.down_proj.weight', 'feat_decoder.estimator.decoder.layers.0.input_layernorm.weight', 'feat_decoder.estimator.decoder.layers.0.post_attention_layernorm.weight', 'feat_decoder.estimator.decoder.layers.1.self_attn.qkv_proj.weight', 'feat_decoder.estimator.decoder.layers.1.self_attn.o_proj.weight', 'feat_decoder.estimator.decoder.layers.1.mlp.gate_up_proj.weight', 'feat_decoder.estimator.decoder.layers.1.mlp.down_proj.weight', 'feat_decoder.estimator.decoder.layers.1.input_layernorm.weight', 'feat_decoder.estimator.decoder.layers.1.post_attention_layernorm.weight', 'feat_decoder.estimator.decoder.layers.2.self_attn.qkv_proj.weight', 'feat_decoder.estimator.decoder.layers.2.self_attn.o_proj.weight', 'feat_decoder.estimator.decoder.layers.2.mlp.gate_up_proj.weight', 'feat_decoder.estimator.decoder.layers.2.mlp.down_proj.weight', 'feat_decoder.estimator.decoder.layers.2.input_layernorm.weight', 'feat_decoder.estimator.decoder.layers.2.post_attention_layernorm.weight', 'feat_decoder.estimator.decoder.layers.3.self_attn.qkv_proj.weight', 'feat_decoder.estimator.decoder.layers.3.self_attn.o_proj.weight', 'feat_decoder.estimator.decoder.layers.3.mlp.gate_up_proj.weight', 'feat_decoder.estimator.decoder.layers.3.mlp.down_proj.weight', 'feat_decoder.estimator.decoder.layers.3.input_layernorm.weight', 'feat_decoder.estimator.decoder.layers.3.post_attention_layernorm.weight', 'feat_decoder.estimator.decoder.norm.weight', 'fsq_layer.in_proj.weight', 'fsq_layer.in_proj.bias', 'fsq_layer.out_proj.weight', 'fsq_layer.out_proj.bias', 'enc_to_lm_proj.weight', 'enc_to_lm_proj.bias', 'lm_to_dit_proj.weight', 'lm_to_dit_proj.bias', 'res_to_dit_proj.weight', 'res_to_dit_proj.bias', 'stop_proj.weight', 'stop_proj.bias', 'stop_head.weight']
-[rank0]:[W1106 07:26:04.469150505 ProcessGroupNCCL.cpp:1538] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+<a name="chinese"></a>
+## 中文 (Chinese)
+
+基于 Nano-vLLM 的 VoxCPM 推理引擎。
+
+### 特性
+- 比 PyTorch 实现更快
+- 支持并发请求
+- 友好的异步 API，易于在 FastAPI 中使用（参见 [fastapi/app.py](fastapi/app.py)）
+
+### 支持的模型
+
+本项目支持两个版本的 VoxCPM 权重推理：
+- [VoxCPM-0.5B](https://huggingface.co/openbmb/VoxCPM-0.5B)
+- [VoxCPM1.5](https://huggingface.co/openbmb/VoxCPM1.5)
+
+### 安装
+
+Nano-vLLM-VoxCPM 尚未发布到 PyPI，需要从源码安装。
+
+```bash
+git clone https://github.com/a710128/nanovllm-voxcpm.git
+cd nanovllm-voxcpm
+pip install -e .
 ```
 
-It's because that nanovllm reads model parameters from `.safetensors` files, but the original format of VoxCPM is `.pt`. You can download the [safetensor](https://huggingface.co/euphoricpenguin22/VoxCPM-0.5B-Safetensors/blob/main/model.safetensors) file manually and put it into the model folder.
+### 快速开始 (FastAPI 服务)
+
+使用以下命令启动 API 服务。请确保指定了正确的模型路径 (`MODEL_PATH`)。
+
+```bash
+MODEL_PATH="./VoxCPM-0.5B" fastapi run fastapi/app.py
+```
+
+### 配置 (环境变量)
+
+服务器可以通过环境变量进行配置。您可以在 `.env` 文件中设置它们，或者直接传递给命令。
+
+| 变量名 | 默认值 | 描述 |
+| :--- | :--- | :--- |
+| `MODEL_PATH` | `~/VoxCPM-0.5B` | VoxCPM 模型目录的路径（支持 0.5B 和 1.5 版本）。 |
+| `MAX_NUM_BATCHED_TOKENS` | `8192` | 批处理中处理的最大 token 数。 |
+| `MAX_NUM_SEQS` | `16` | 最大并发序列（请求）数。 |
+| `MAX_MODEL_LEN` | `4096` | 模型的最大序列长度。 |
+| `GPU_MEMORY_UTILIZATION` | `0.95` | GPU 显存占用比例。 |
+| `ENFORCE_EAGER` | `False` | 是否强制使用 eager 执行模式。 |
+| `DEVICES` | `[0]` | 使用的 GPU 设备 ID 列表。 |
+| `DB_PATH` | `prompts.db` | 用于存储 prompt 的 SQLite 数据库路径。 |
+| `INFERENCE_TIMESTEPS` | `10` | 扩散推理的时间步数。 |
+| `SCHEDULER_LOG_INTERVAL` | `5.0` | 调度器日志记录间隔（秒）。 |
+| `SCHEDULER_LOG_ENABLE` | `True` | 启用或禁用调度器日志记录。 |
+
+### 基本用法
+
+请参考 [example.py](example.py) 查看使用示例。
+
+### 已知问题
+
+如果您遇到类似 `ValueError: Missing parameters: ...` 的错误，通常是因为 `nanovllm` 读取模型参数需要 `.safetensors` 格式，而 VoxCPM 原始格式为 `.pt`。
+
+解决方案：手动下载 `.safetensors` 文件并将其放入模型文件夹中。
+- [VoxCPM-0.5B-Safetensors](https://huggingface.co/euphoricpenguin22/VoxCPM-0.5B-Safetensors/blob/main/model.safetensors)
+
+### 致谢
+- [VoxCPM](https://github.com/OpenBMB/VoxCPM)
+- [Nano-vLLM](https://github.com/GeeeekExplorer/nano-vllm)
+
+### 许可证
+MIT License
